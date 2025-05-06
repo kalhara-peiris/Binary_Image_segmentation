@@ -1,147 +1,127 @@
-# Shoreline Segmentation with DeepLabV3+
+# Shoreline Segmentation Model
 
-This repository contains a PyTorch implementation of DeepLabV3+ for shoreline segmentation in satellite/aerial imagery. The model is designed to accurately identify and segment shorelines in coastal imagery, which can be useful for coastal monitoring, erosion analysis, and environmental studies.
+A deep learning project for automated shoreline extraction from satellite imagery using a DeepLabV3+ architecture implemented from scratch.
 
-## Project Overview
+## Overview
 
-The project implements a custom DeepLabV3+ architecture with ResNet-like backbone for semantic segmentation of shorelines. Key features include:
+This repository contains a PyTorch implementation of a semantic segmentation model designed to identify and extract shorelines from satellite imagery. The model uses a DeepLabV3+ architecture built entirely from scratch with memory optimizations and is trained to create binary masks that differentiate between water and land areas.
 
-- Custom DeepLabV3+ implementation with modified stride and ASPP (Atrous Spatial Pyramid Pooling)
-- Combined Focal and Dice loss for handling class imbalance
-- Data augmentation pipeline using Albumentations
-- Training pipeline with early stopping and learning rate scheduling
-- Google Colab integration for easy model training and storage
+## Features
+
+- **Custom DeepLabV3+ Architecture**: Implemented from scratch and adapted for memory efficiency with reduced stride and GroupNorm
+- **Mixed Precision Training**: Uses PyTorch AMP for memory-efficient training
+- **Memory Optimizations**: Includes gradient clipping, memory clearing, and efficient data loading
+- **Advanced Loss Functions**: Combines Focal Loss and Dice Loss for better boundary detection
+- **Data Augmentation**: Comprehensive image augmentation pipeline using Albumentations
+- **Early Stopping**: Prevents overfitting with patience-based early stopping
 
 ## Requirements
 
-- Python 3.6+
-- PyTorch
-- OpenCV
-- NumPy
-- Matplotlib
-- Albumentations
-- scikit-learn
-- tqdm
-- Google Colab (for Drive integration)
+- Python 3.7+
+- PyTorch 1.7+
+- CUDA-capable GPU (recommended)
+- Google Colab (for the current implementation)
+- Google Drive (for storage)
 
-## Installation
-
-```bash
-pip install torch torchvision numpy matplotlib opencv-python albumentations scikit-learn tqdm
-```
-
-## Dataset Structure
-
-The code expects the following directory structure:
+## Dependencies
 
 ```
-data/
-├── train/
-│   ├── images/
-│   └── masks/
-├── val/
-│   ├── images/
-│   └── masks/
-└── test/
-    ├── images/
-    └── masks/
+torch
+torchvision
+numpy
+opencv-python (cv2)
+albumentations
+scikit-learn
+tqdm
+PIL
 ```
 
-- Images should be RGB images
-- Masks should be binary grayscale images where white (255) represents the shoreline and black (0) represents the background
+## Directory Structure
+
+The code expects the following directory structure in your Google Drive:
+
+```
+/content/drive/MyDrive/
+├── dataset/
+│   ├── training_satellite/      # Training satellite images
+│   ├── training_mask/           # Training mask images
+│   ├── validation_satellite/    # Validation satellite images
+│   ├── validation_mask/         # Validation mask images
+│   ├── testing_satellite/       # Test satellite images
+│   └── testing_mask/            # Test mask images
+└── shoreline_model_bs/          # Model checkpoints and training history
+```
 
 ## Model Architecture
 
-The implemented DeepLabV3+ architecture includes:
+The model architecture is implemented from scratch and consists of:
 
-- ResNet-like backbone with modified strides
-- ASPP module with dilation rates of 6, 12, and 18
-- Low-level feature integration from early layers
-- Auxiliary decoder for deep supervision during training
+1. **Backbone**: Custom ResNet-like network with GroupNorm
+2. **ASPP Module**: Custom Atrous Spatial Pyramid Pooling with dilated convolutions
+3. **Decoder**: Feature fusion decoder that combines high-level and low-level features
+4. **Auxiliary Head**: Additional supervision during training
+
+All components are built from the ground up without using pre-trained models or existing implementations.
 
 ## Training
 
-To train the model:
+The model is trained with:
 
-```python
-# Define data directories
-train_image_dir = '/path/to/train/images'
-train_mask_dir = '/path/to/train/masks'
-val_image_dir = '/path/to/val/images'
-val_mask_dir = '/path/to/val/masks'
-test_image_dir = '/path/to/test/images'
-test_mask_dir = '/path/to/test/masks'
-
-# Prepare dataloaders
-train_loader, val_loader, test_loader = prepare_dataloaders(
-    train_image_dir, train_mask_dir,
-    val_image_dir, val_mask_dir,
-    test_image_dir, test_mask_dir,
-    batch_size=6, image_size=540
-)
-
-# Initialize model
-model = DeepLabV3Plus(num_classes=1).to(device)
-
-# Train model
-model, training_history = train_model(
-    model,
-    train_loader,
-    val_loader,
-    device,
-    num_epochs=200,
-    learning_rate=0.0003
-)
-```
-
-## Hyperparameters
-
-The default hyperparameters are:
+- Batch size: 8
+- Image size: 1024×1024 (center-cropped)
 - Learning rate: 0.0003
-- Batch size: 6
-- Number of epochs: 200
-- Image size: 540x540
-- Optimizer: AdamW with weight decay 1e-4
-- Scheduler: CosineAnnealingLR
-- Loss function: Combined Focal Loss (alpha=0.003, gamma=5.0) and Dice Loss (weight=0.5)
+- Optimizer: AdamW with weight decay
+- Scheduler: Cosine Annealing
+- Loss: Combined Focal Loss and Dice Loss
+- Epochs: 200 (with early stopping)
 
-## Loss Function
+## Usage
 
-The model uses a custom loss function that combines Focal Loss and Dice Loss:
+1. Mount your Google Drive:
+   ```python
+   from google.colab import drive
+   drive.mount('/content/drive')
+   ```
 
-- **Focal Loss**: Helps focus on hard-to-classify examples
-- **Dice Loss**: Addresses class imbalance by directly optimizing the overlap between predictions and ground truth
+2. Ensure your dataset is organized in the expected directory structure
 
-## Data Augmentation
+3. Run the main script:
+   ```python
+   python main.py
+   ```
 
-The training pipeline includes extensive data augmentation:
-- Horizontal and vertical flips
-- Random rotations
-- Elastic transformations
-- Grid and optical distortions
-- Gaussian, median, and motion blur
-- Brightness and contrast adjustments
-- Hue and saturation changes
+## Outputs
 
-## Early Stopping
+The model saves:
 
-The training process includes early stopping with:
-- Patience: 25 epochs
-- Minimum delta: 1e-4
+- Best model weights (`best_shoreline_deeplabv3.pt`)
+- Final model weights (`final_shoreline_deeplabv3.pt`)
+- Training history (`training_history_deeplabv3.pkl` and `final_training_history_deeplabv3.pkl`)
 
-## Model Saving
+## Custom Components
 
-Models are saved in two ways:
-- Best model based on validation loss
-- Final model after training
+### Loss Function
 
-Training history is saved periodically and at the end of training.
+The repository implements a custom loss function that combines Focal Loss and Dice Loss:
 
-## Google Drive Integration
+- **Focal Loss**: Addresses class imbalance by focusing on hard examples
+- **Dice Loss**: Improves boundary detection by optimizing for pixel-wise overlap
 
-The code automatically mounts Google Drive and creates a directory for saving models:
+### Dataset Class
 
-```python
-MODEL_SAVE_PATH = '/content/drive/MyDrive/shoreline_models16sss'
-```
+The `ShorelineDataset` class handles loading and processing of image-mask pairs, with support for on-the-fly augmentations.
+
+### Early Stopping
+
+The `EarlyStopping` class monitors validation loss and stops training when performance plateaus to prevent overfitting.
+
+## Acknowledgments
+
+This implementation uses techniques from state-of-the-art segmentation literature, including:
+
+- DeepLabV3+ architecture (implemented entirely from scratch)
+- Memory-efficient training practices
+- Advanced loss functions for boundary detection
+
+Unlike many repositories that use pre-trained backbones or existing implementations, this project builds the entire DeepLabV3+ architecture from the ground up, allowing for complete customization and optimization for the shoreline segmentation task.
 
